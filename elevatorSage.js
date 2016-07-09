@@ -4,11 +4,6 @@
     init: function(elevators, floors) {
         var floorsToVisit = [];
 
-        //This is currently adding unneeded complexity, but I had grand designs to make a scheduling algorithm to make it so people waited the least amount possible
-        function newFloorPush(floorNumber) {
-            return { number: floorNumber, time: new Date() };
-        }
-
         function processAllElevatorsMoves() {
             for (var i = 0; i < elevators.length; i++) {
                 elevators[i].processMove();
@@ -18,17 +13,17 @@
         function bindElevatorEvents(elevator) {
             elevator.floorsToVisit = [];
 
-            elevator.getClosestFloorPush = function () {
+            elevator.getClosestFloorPush = function (floorsToVisit) {
                 var closestFloorPush = 0,
                     currentFloor = this.currentFloor();
                 
-                for (var i = 0; i < this.floorsToVisit.length; i++) {
-                    if (Math.abs(currentFloor - this.floorsToVisit[i].number) < Math.abs(currentFloor - this.floorsToVisit[closestFloorPush].number)) {
-                        closestFloorPush = 0;
+                for (var i = 0; i < floorsToVisit.length; i++) {
+                    if (Math.abs(currentFloor - floorsToVisit[i]) < Math.abs(currentFloor - floorsToVisit[closestFloorPush])) {
+                        closestFloorPush = i;
                     }
                 }
                 
-                return this.floorsToVisit[closestFloorPush].number;
+                return floorsToVisit[closestFloorPush];
             }
 
             elevator.processMove = function () {
@@ -37,14 +32,15 @@
                 }
 
                 if (this.floorsToVisit.length) {
-                    this.goToFloor(this.getClosestFloorPush());
+                    this.goToFloor(this.getClosestFloorPush(this.floorsToVisit));
                 }
                 else {
                     if (floorsToVisit.length) {
-                        console.log("allFloors1", floorsToVisit)
-                        var goFloor = floorsToVisit.splice(0,1)[0];
+                        var goFloor = this.getClosestFloorPush(floorsToVisit);// floorsToVisit.splice(0,1)[0];
+                        floorsToVisit.splice(floorsToVisit.indexOf(goFloor),1);
+
                         console.log("visiting global floor", goFloor);
-                        this.goToFloor(goFloor.number);
+                        this.goToFloor(goFloor);
                     }
                     else {
                         console.log("Still idle", floorsToVisit, this.floorsToVisit);
@@ -54,15 +50,13 @@
             }
 
             elevator.on("floor_button_pressed", function(floorNum) {
-                var newFloor = newFloorPush(floorNum);
-                console.log("here is a floor0", newFloor);
-                elevator.floorsToVisit.push(newFloor);
+                elevator.floorsToVisit.push(floorNum);
                 elevator.processMove();
             });
 
             elevator.on("stopped_at_floor", function(floorNum) {
-                this.floorsToVisit = this.floorsToVisit.filter(function (f) { return f.number != floorNum; });
-                floorsToVisit = floorsToVisit.filter(function (f) { return f.number != floorNum; });
+                this.floorsToVisit = this.floorsToVisit.filter(function (f) { return f != floorNum; });
+                floorsToVisit = floorsToVisit.filter(function (f) { return f != floorNum; });
             })
 
             elevator.on("idle", function() {
@@ -79,7 +73,7 @@
             var floor = floors[i];
 
             floor.on("up_button_pressed down_button_pressed", function() {
-                floorsToVisit.push(newFloorPush(this.floorNum()));
+                floorsToVisit.push(this.floorNum());
 
                 processAllElevatorsMoves();
             });
