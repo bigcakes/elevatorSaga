@@ -4,58 +4,60 @@
     init: function(elevators, floors) {
         var floorsToVisit = [];
 
+        //This is currently adding unneeded complexity, but I had grand designs to make a scheduling algorithm to make it so people waited the least amount possible
         function newFloorPush(floorNumber) {
             return { number: floorNumber, time: new Date() };
-        }
-        
-        function getClosestFloorPush(currentFloor, floorPushes) {
-            var closestFloorPush = 0;
-            
-            for (var i = 0; i < floorPushes.length; i++) {
-                if (Math.abs(currentFloor - floorPushes[i].number) < Math.abs(currentFloor - floorPushes[closestFloorPush].number)) {
-                    closestFloorPush = 0;
-                }
-            }
-            
-            return floorPushes[closestFloorPush].number;
-        }
-
-        function processElevatorMove(elevator) {
-            if (!elevator.idle) {
-                return;
-            }
-
-            if (elevator.floorsToVisit.length) {
-                elevator.goToFloor(getClosestFloorPush(elevator.currentFloor(),elevator.floorsToVisit));
-            }
-            else {
-                if (floorsToVisit.length) {
-                    console.log("allFloors1", floorsToVisit)
-                    var goFloor = floorsToVisit.splice(0,1)[0];
-                    console.log("visiting global floor", goFloor);
-                    elevator.goToFloor(goFloor.number);
-                }
-                else {
-                    console.log("Still idle", floorsToVisit, elevator.floorsToVisit);
-                    elevator.idle = true;
-                }
-            }
         }
 
         function processAllElevatorsMoves() {
             for (var i = 0; i < elevators.length; i++) {
-                processElevatorMove(elevators[i]);
+                elevators[i].processMove();
             }
         }
 
         function bindElevatorEvents(elevator) {
             elevator.floorsToVisit = [];
 
+            elevator.getClosestFloorPush = function () {
+                var closestFloorPush = 0,
+                    currentFloor = this.currentFloor();
+                
+                for (var i = 0; i < this.floorsToVisit.length; i++) {
+                    if (Math.abs(currentFloor - this.floorsToVisit[i].number) < Math.abs(currentFloor - this.floorsToVisit[closestFloorPush].number)) {
+                        closestFloorPush = 0;
+                    }
+                }
+                
+                return this.floorsToVisit[closestFloorPush].number;
+            }
+
+            elevator.processMove = function () {
+                if (!this.idle) {
+                    return;
+                }
+
+                if (this.floorsToVisit.length) {
+                    this.goToFloor(this.getClosestFloorPush());
+                }
+                else {
+                    if (floorsToVisit.length) {
+                        console.log("allFloors1", floorsToVisit)
+                        var goFloor = floorsToVisit.splice(0,1)[0];
+                        console.log("visiting global floor", goFloor);
+                        this.goToFloor(goFloor.number);
+                    }
+                    else {
+                        console.log("Still idle", floorsToVisit, this.floorsToVisit);
+                        this.idle = true;
+                    }
+                }
+            }
+
             elevator.on("floor_button_pressed", function(floorNum) {
                 var newFloor = newFloorPush(floorNum);
                 console.log("here is a floor0", newFloor);
                 elevator.floorsToVisit.push(newFloor);
-                processElevatorMove(elevator)
+                elevator.processMove();
             });
 
             elevator.on("stopped_at_floor", function(floorNum) {
@@ -65,7 +67,7 @@
 
             elevator.on("idle", function() {
                 this.idle = true;
-                processElevatorMove(this);
+                this.processMove();
             });
         }
 
@@ -76,17 +78,11 @@
         for(var i = 0; i < floors.length; i++) {
             var floor = floors[i];
 
-            floor.on("up_button_pressed", function() {
+            floor.on("up_button_pressed down_button_pressed", function() {
                 floorsToVisit.push(newFloorPush(this.floorNum()));
 
                 processAllElevatorsMoves();
             });
-
-            floor.on("down_button_pressed", function() {
-                floorsToVisit.push(newFloorPush(this.floorNum()));
-
-                processAllElevatorsMoves();
-            })
         }
     },
     update: function(dt, elevators, floors) {
