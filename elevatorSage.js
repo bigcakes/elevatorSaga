@@ -31,21 +31,25 @@
                     return;
                 }
 
+                this.idle = false;
+                
                 if (this.floorsToVisit.length) {
-                    this.goToFloor(this.getClosestFloorPush(this.floorsToVisit));
+                    var goFloor = this.getClosestFloorPush(this.floorsToVisit);
+
+                    console.log("visiting elevator floor", goFloor);
+
+                    this.goToFloor(goFloor);
+                }
+                else if (floorsToVisit.length) {
+                    var goFloor = this.getClosestFloorPush(floorsToVisit);// floorsToVisit.splice(0,1)[0];
+                    floorsToVisit.splice(floorsToVisit.indexOf(goFloor),1);
+
+                    console.log("visiting global floor", goFloor);
+                    this.goToFloor(goFloor);
                 }
                 else {
-                    if (floorsToVisit.length) {
-                        var goFloor = this.getClosestFloorPush(floorsToVisit);// floorsToVisit.splice(0,1)[0];
-                        floorsToVisit.splice(floorsToVisit.indexOf(goFloor),1);
-
-                        console.log("visiting global floor", goFloor);
-                        this.goToFloor(goFloor);
-                    }
-                    else {
-                        console.log("Still idle", floorsToVisit, this.floorsToVisit);
-                        this.idle = true;
-                    }
+                    console.log("Still idle", floorsToVisit, this.floorsToVisit);
+                    this.idle = true;
                 }
             }
 
